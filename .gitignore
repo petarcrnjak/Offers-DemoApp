@@ -52,3 +52,15 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# LibMan restored client libraries (if using LibMan)
+wwwroot/lib/
+
+# Bundled/minified outputs (if you build assets)
+wwwroot/dist/
+*.map
+
+# VS/IDE
+.vs/
+*.user
+*.suo
