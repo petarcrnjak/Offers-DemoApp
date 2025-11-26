@@ -1,0 +1,100 @@
+@model ImportViewModel
+
+@{
+    ViewData["Title"] = "Unos liste ponuda";
+}
+
+<h2>Uvoz ponuda iz Excel datoteke</h2>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<form asp-controller="Offers" asp-action="ImportExcel" method="post" enctype="multipart/form-data">
+    @Html.AntiForgeryToken()
+
+    <div class="form-group">
+        <label asp-for="ExcelFile" class="control-label"></label>
+        <input asp-for="ExcelFile" type="file" class="form-control" accept=".xlsx,.xls"/>
+        <span asp-validation-for="ExcelFile" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-3">Uvezi podatke</button>
+</form>
+
+@if (ViewBag.Message != null)
+{
+    <div class="alert alert-info">
+        @ViewBag.Message
+    </div>
+}
+
+@if (Model?.ImportResult != null)
+{
+    <div class="mt-4">
+        <h4>Rezultat uvoza - @Model.ImportResult.ProcessedDate.ToString("dd.MM.yyyy")</h4>
+
+        <div class="alert @(Model.ImportResult.Errors.Any() ? "alert-warning" : "alert-success")">
+            @if (Model.ImportResult.SuccessCount > 0)
+            {
+                <p><strong>Uspješno uvezeno:</strong> @Model.ImportResult.SuccessCount stavki</p>
+            }
+
+            @if (Model.ImportResult.Errors.Any())
+            {
+                <p><strong>Greške:</strong> @Model.ImportResult.Errors.Count redova s greškama</p>
+            }
+        </div>
+
+        @if (Model.ImportResult.Errors.Any())
+        {
+            <div class="card border-danger mt-3">
+                <div class="card-header bg-danger text-white">
+                    Detalji grešaka
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <thead>
+                        <tr>
+                            <th>Red</th>
+                            <th>Greške</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var error in Model.ImportResult.Errors)
+                        {
+                            <tr>
+                                <td>@error.RowNumber</td>
+                                <td>
+                                    <ul class="mb-0">
+                                        @foreach (var msg in error.Errors)
+                                        {
+                                            <li>@msg</li>
+                                        }
+                                    </ul>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial"/>
+}

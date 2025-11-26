@@ -1,0 +1,238 @@
+﻿@model Application.DTOs.OfferDto
+
+<h1>@(Model.Id == 0 ? "Kreiraj Novu Ponudu" : "Uredi Ponudu")</h1>
+
+@if (Model.Id != 0)
+{
+    <p><strong>Broj ponude:</strong> @Model.Id</p>
+    <p><strong>Datum ponude:</strong> @Model.Date</p>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["ErrorMessage"]
+    </div>
+}
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["SuccessMessage"]
+    </div>
+}
+
+<div id="alertsContainer"></div>
+
+<!-- Add Item Modal -->
+<div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addItemModalLabel">Dodaj novu stavku</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addItemForm">
+                    <div class="mb-3">
+                        <label for="articleSelect" class="form-label">Artikl</label>
+                        <select class="form-select select2" id="articleSelect" required>
+                            <option value="">Odaberite artikl</option>
+                            <!-- Options will be loaded via AJAX -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="unitPrice" class="form-label">Jedinična cijena</label>
+                        <input type="number" step="0.01" min="0" class="form-control" id="unitPrice" readonly="">
+                    </div>
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label">Količina</label>
+                        <input type="number" min="1" class="form-control" id="quantity" value="1" required
+                               oninput="validateQuantity(this)">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Odustani</button>
+                <button type="button" class="btn btn-primary" id="saveItem">Spremi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.Id != 0)
+{
+    <div class="text-end">
+        <button type="button" id="add-item" class="btn btn-primary">Dodaj Stavku</button>
+    </div>
+}
+<form method="post" asp-action="SaveOffer">
+    <input type="hidden" asp-for="Id"/>
+    <input type="hidden" asp-for="Date"/>
+    <h3>Stavke ponude</h3>
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Artikl</th>
+            <th>Jedinična cijena</th>
+            <th>Količina</th>
+            <th>Ukupna cijena</th>
+            <th>Akcije</th>
+        </tr>
+        </thead>
+        <tbody>
+        @if (Model.OfferItems != null && Model.OfferItems.Count > 0)
+        {
+            @for (var i = 0; i < Model.OfferItems.Count; i++)
+            {
+                <tr>
+                    <td>@Model.OfferItems[i].Article</td>
+                    <td>@Model.OfferItems[i].UnitPrice</td>
+                    <td>
+                        <!-- Bind properties for each OfferItem -->
+                        <input type="hidden" asp-for="OfferItems[i].Id"/>
+                        <input type="hidden" asp-for="OfferItems[i].Article"/>
+                        <input type="hidden" asp-for="OfferItems[i].UnitPrice"/>
+
+                        <!-- Quantity field -->
+                        <input class="form-control quantity-input"
+                               asp-for="OfferItems[i].Quantity"
+                               type="number"
+                               min="1" step="1"
+                               data-price="@Model.OfferItems[i].UnitPrice"
+                               oninput="updateTotalPrice(this)"/>
+                    </td>
+                    <td class="total-price">@(Model.OfferItems[i].UnitPrice * Model.OfferItems[i].Quantity)</td>
+                    <td>
+                        <a class="btn btn-danger" asp-action="DeleteItem"
+                           asp-route-offerId="@Model.Id"
+                           asp-route-itemId="@Model.OfferItems[i].Id">Obriši</a>
+                    </td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="5">Nema dostupnih artikala.</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+
+    @if (Model.OfferItems != null && Model.OfferItems.Count > 0)
+    {
+        <h3>Ukupni iznos ponude: <span id="totalAmount">@ViewBag.TotalAmount</span></h3>
+    }
+    <br/>
+    @if (Model.Id != 0)
+    {
+        <button type="submit" class="btn btn-success">Spremi promjene</button>
+    }
+    <a class="btn btn-secondary" asp-action="Index">Povratak</a>
+</form>
+
+@section Scripts {
+    <script>
+        $(function() {
+            const modal = new bootstrap.Modal('#addItemModal');
+            
+            $('#add-item').click(() => modal.show());
+            
+            $('#articleSelect').change(function() {
+                $('#unitPrice').val($(this).find(':selected').data('price') || '');
+            });
+
+            $('#saveItem').click(function() {
+                const article = $('#articleSelect').find(':selected');
+                const quantity = $('#quantity').val();
+                
+                if (!article.val() || quantity < 1) {
+                    alert('Popunite sva polja ispravno');
+                    return;
+                }
+
+                const item = {
+                    id: article.val(),
+                    article: article.text(),
+                    price: article.data('price'),
+                    quantity: quantity
+                };
+
+                addItemToTable(item);
+                modal.hide();
+                $('#addItemForm')[0].reset();
+            });
+
+            function loadArticles() {
+                $.get('@Url.Action("GetArticleNames", "Offers")', function(data) {
+                    const select = $('#articleSelect').empty().append('<option value="">Odaberite artikl</option>');
+                    data.forEach(item => {
+                        select.append($('<option>', {
+                            value: item.id,
+                            text: item.article,
+                            'data-price': item.unitPrice
+                        }));
+                    });
+                }).fail(() => alert('Greška pri učitavanju artikala'));
+            }
+
+            let itemCounter = @(Model.OfferItems?.Count ?? 0); // Initialize with existing items
+
+            function addItemToTable(item) {
+                const row = `
+        <tr>
+            <td>${item.article}</td>
+            <td>${item.price.toFixed(2)}</td>
+            <td>
+                <input type="hidden" name="OfferItems[${itemCounter}].Id" value="${item.id}"/>
+                <input type="hidden" name="OfferItems[${itemCounter}].Article" value="${item.article}"/>
+                <input type="hidden" name="OfferItems[${itemCounter}].UnitPrice" value="${item.price}"/>
+                <input class="form-control" name="OfferItems[${itemCounter}].Quantity" 
+                       value="${item.quantity}" min="1">
+            </td>
+            <td>${(item.price * item.quantity).toFixed(2)}</td>
+            <td>
+                <button type="button" class="btn btn-danger remove-item">Obriši</button>
+            </td>
+        </tr>
+    `;
+
+                if (itemCounter === 0) {
+                    $('tbody').html(row);
+                } else {
+                    $('tbody').append(row);
+                }
+                itemCounter++;
+            }
+
+// Update remove function to decrement counter
+            $(document).on('click', '.remove-item', function() {
+                $(this).closest('tr').remove();
+                itemCounter--;
+            });
+
+// Update the remove function to reindex remaining items
+            $(document).on('click', '.remove-item', function() {
+                $(this).closest('tr').remove();
+                reindexItems();
+            });
+
+            function reindexItems() {
+                $('tbody tr').each(function(index) {
+                    $(this).find('input').each(function() {
+                        const name = $(this).attr('name');
+                        if (name) {
+                            $(this).attr('name', name.replace(/\[\d+\]/, `[${index}]`));
+                        }
+                    });
+                });
+            }
+
+            $(document).on('click', '.remove-item', function() {
+                $(this).closest('tr').remove();
+            });
+
+            $('#addItemModal').on('show.bs.modal', loadArticles);
+        });
+    </script>
+}
