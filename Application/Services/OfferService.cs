@@ -21,6 +21,7 @@ public class OfferService : IOfferService
     public async Task<List<OfferDto>> GetOffersAsync()
     {
         var offers = await _offerRepository.GetAllOffersAsync();
+
         return offers.Select(offer => new OfferDto(offer)).ToList();
     }
 
@@ -34,6 +35,7 @@ public class OfferService : IOfferService
     public async Task<OfferDto?> GetOfferByIdAsync(int id)
     {
         var offer = await _offerRepository.GetOfferByIdAsync(id);
+
         return offer == null ? null : new OfferDto(offer); // Mapping to DTO
     }
 
@@ -90,8 +92,7 @@ public class OfferService : IOfferService
         if (updatedOfferResult == null)
             return null;
 
-        var updatedOfferDto = OfferMapper.OfferToDto(offer);
-        return updatedOfferDto;
+        return OfferMapper.OfferToDto(offer);
     }
 
     public async Task<bool> DeleteOfferItem(int offerId, int itemId)
@@ -115,8 +116,8 @@ public class OfferService : IOfferService
         {
             Date = DateTime.Now
         };
+
         var createdOffer = await _offerRepository.CreateNewOfferAsync(newOffer);
-        var mapped = OfferMapper.OfferToDto(createdOffer);
-        return mapped;
+        return OfferMapper.OfferToDto(createdOffer);
     }
 }

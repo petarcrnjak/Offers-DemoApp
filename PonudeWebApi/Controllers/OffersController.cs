@@ -3,8 +3,8 @@ using Application.Enums;
 using Application.Interfaces;
 using Application.Mappers;
 using Microsoft.AspNetCore.Mvc;
-using static Core.Helpers.PaginationHelper;
 using static Application.Helpers.ApiResponseHelper;
+using static Core.Helpers.PaginationHelper;
 
 namespace PonudeWebApi.Controllers;
 
@@ -53,6 +53,7 @@ public class OffersController : ControllerBase
         var offer = await _offerService.GetOfferByIdAsync(id);
         if (offer == null)
             return NotFoundResponse<OfferDto>("Offer not found");
+
         return Ok(offer);
     }
 
@@ -84,7 +85,7 @@ public class OffersController : ControllerBase
         if (result)
             return Ok(new { success = true });
 
-        return BadRequest($"Failed to delete offer item: {itemId}");
+        return BadRequestResponse($"Failed to delete offer item: {itemId}");
     }
 
     [HttpGet("offerItems")]
