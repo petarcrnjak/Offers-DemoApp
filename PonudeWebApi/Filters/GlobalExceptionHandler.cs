@@ -1,7 +1,9 @@
-using System.Net;
+using Application.Models;
+using Application.Models.Validation;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using System.Net;
 
 namespace PonudeWebApi.Filters;
 
@@ -31,21 +33,14 @@ public class GlobalExceptionHandler : IExceptionHandler
     {
         context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
 
-        var problemDetails = new ValidationProblemDetails
-        {
-            Type = "https://httpstatuses.com/400",
-            Title = "Validation Failed",
-            Status = StatusCodes.Status400BadRequest,
-            Detail = "One or more validation errors occurred.",
-            Instance = context.Request.Path
-        };
-        AddTraceIdStackTrace(problemDetails, exception);
-
         // Add validation errors
-        foreach (var error in exception.Errors)
-            problemDetails.Errors.Add(error.PropertyName, new[] { error.ErrorMessage });
+        var errors = exception.Errors
+            .Select(e => new ValidationError(e.PropertyName ?? string.Empty, e.ErrorMessage))
+            .ToList();
 
-        await context.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+        var apiResponse = new ApiResponseWrapper<List<ValidationError>>(errors, "Validation Failed", false);
+
+        await context.Response.WriteAsJsonAsync(apiResponse, cancellationToken);
     }
 
     private static async Task HandleGenericExceptionAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)

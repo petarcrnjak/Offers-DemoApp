@@ -10,9 +10,9 @@ namespace Application.Services;
 public class OfferService : IOfferService
 {
     private readonly IOfferRepository _offerRepository;
-    private readonly IValidator<OfferItemDto> _validator;
+    private readonly IValidator<OfferDto> _validator;
 
-    public OfferService(IOfferRepository offerRepository, IValidator<OfferItemDto> validator)
+    public OfferService(IOfferRepository offerRepository, IValidator<OfferDto> validator)
     {
         _offerRepository = offerRepository;
         _validator = validator;
@@ -45,55 +45,31 @@ public class OfferService : IOfferService
         if (offer == null)
             return null;
 
-        // Remove OfferDetails that are not in the updatedOffer (to handle removals)
-        var itemsToRemove = offer.OfferDetails
-            .Where(od => updatedOffer.OfferItems != null && updatedOffer.OfferItems.All(dto => dto.Id != od.OfferItemId))
-            .ToList();
+        var updatedItems = updatedOffer.OfferItems ?? [];
 
-        foreach (var item in itemsToRemove)
-            offer.OfferDetails.Remove(item);
+        var validationResult = await _validator.ValidateAsync(updatedOffer);
+        if (!validationResult.IsValid)
+            throw new ValidationException(validationResult.Errors);
 
-        if (updatedOffer.OfferItems != null)
-            foreach (var item in updatedOffer.OfferItems)
+        var domainOffer = new Offer
+        {
+            Id = id,
+            Date = updatedOffer.Date,
+            OfferDetails = updatedItems.Select(i => new OfferDetails
             {
-                var validationResult = await _validator.ValidateAsync(item);
-                if (!validationResult.IsValid)
-                {
-                    validationResult.Errors.ForEach(error => error.ErrorMessage = $"{item.Article}: {error.ErrorMessage}");
-                    throw new ValidationException(validationResult.Errors);
-                }
+                OfferId = id,
+                OfferItemId = i.Id,
+                Quantity = i.Quantity
+            }).ToList()
+        };
 
-                var existingOfferItem = await _offerRepository.GetOfferItemByIdAsync(item.Id);
-                if (existingOfferItem == null)
-                    continue;
-
-                // Add or update OfferDetails
-                var offerDetails = offer.OfferDetails.FirstOrDefault(od => od.OfferItemId == item.Id);
-                if (offerDetails == null)
-                {
-                    offerDetails = new OfferDetails
-                    {
-                        OfferId = id,
-                        OfferItemId = item.Id,
-                        OfferItem = existingOfferItem,
-                        Offer = offer,
-                        Quantity = item.Quantity
-                    };
-                    offer.OfferDetails.Add(offerDetails);
-                }
-                else
-                {
-                    // Update existing OfferDetails if needed
-                    offerDetails.Quantity = item.Quantity;
-                }
-            }
-
-        var updatedOfferResult = await _offerRepository.UpdateOffer(offer);
-        if (updatedOfferResult == null)
+        var updated = await _offerRepository.UpdateOffer(domainOffer);
+        if (updated == null)
             return null;
 
-        return OfferMapper.OfferToDto(offer);
+        return OfferMapper.OfferToDto(updated);
     }
+
 
     public async Task<bool> DeleteOfferItem(int offerId, int itemId)
     {

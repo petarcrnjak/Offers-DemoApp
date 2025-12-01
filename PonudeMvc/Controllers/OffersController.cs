@@ -21,7 +21,7 @@ public class OffersController : Controller
     public async Task<IActionResult> Index(int pageIndex = 1)
     {
         var response = await _offerItemClient.GetPaginatedOffersAsync(pageIndex);
-        if (response == null || response.Offers?.Count == 0)
+        if (response == null || response.Offers == null || response.Offers.Count == 0)
         {
             var emptyModel = new PaginatedOffersViewModel
             {
@@ -69,7 +69,7 @@ public class OffersController : Controller
         {
             Id = newOffer.Id,
             Date = DateTime.Now,
-            OfferItems = new List<OfferItemDto>()
+            OfferItems = []
         });
     }
 
@@ -106,7 +106,7 @@ public class OffersController : Controller
 
         if (!updatedOfferResponse.Success)
         {
-            TempData["ErrorMessage"] = updatedOfferResponse.ErrorMessage ?? "Unknown error occurred.";
+            TempData["ErrorMessage"] = (updatedOfferResponse.ErrorMessage ?? "Unknown error occurred.").Trim();
             return RedirectToAction("CreateEdit", new { id = offer.Id });
         }
 

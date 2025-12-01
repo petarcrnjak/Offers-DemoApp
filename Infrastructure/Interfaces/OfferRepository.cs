@@ -52,10 +52,68 @@ public class OfferRepository : IOfferRepository
 
     public async Task<Offer?> UpdateOffer(Offer updatedOffer)
     {
-        _context.Offers.Update(updatedOffer);
-        var result = await _context.SaveChangesAsync();
+        var existing = await _context.Offers
+           .Include(o => o.OfferDetails)
+           .ThenInclude(od => od.OfferItem)
+           .FirstOrDefaultAsync(o => o.Id == updatedOffer.Id);
 
-        return result > 0 ? updatedOffer : null;
+        if (existing == null)
+            return null;
+
+        var updatedDetails = updatedOffer.OfferDetails ?? new List<OfferDetails>();
+        var updatedItemIds = updatedDetails.Select(d => d.OfferItemId).ToHashSet();
+
+        var toRemove = existing.OfferDetails
+           .Where(d => !updatedItemIds.Contains(d.OfferItemId))
+           .ToList();
+
+        foreach (var rem in toRemove)
+        {
+            // remove from navigation and mark for deletion
+            existing.OfferDetails.Remove(rem);
+            _context.Remove(rem);
+        }
+
+        // Update existing details and add new ones
+        foreach (var upd in updatedDetails)
+        {
+            var existingDetail = existing.OfferDetails.FirstOrDefault(d => d.OfferItemId == upd.OfferItemId);
+            if (existingDetail != null)
+            {
+                if (existingDetail.Quantity != upd.Quantity)
+                    existingDetail.Quantity = upd.Quantity;
+            }
+            else
+            {
+                // Ensure OfferItem is attached/tracked
+                var item = await _context.OfferItems.FindAsync(upd.OfferItemId);
+                if (item == null)
+                {
+                    // Skip relations for missing OfferItem - caller/service should ensure items exist
+                    continue;
+                }
+
+                var newDetail = new OfferDetails
+                {
+                    OfferId = existing.Id,
+                    OfferItemId = item.Id,
+                    OfferItem = item,
+                    Quantity = upd.Quantity
+                };
+
+                existing.OfferDetails.Add(newDetail);
+            }
+        }
+
+        try
+        {
+            await _context.SaveChangesAsync();
+            return existing;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return null;
+        }
     }
 
     public async Task<bool> DeleteOfferItemAsync(int offerId, int itemId)

@@ -4,7 +4,7 @@ namespace Ponude.Models;
 
 public class PaginatedOffersViewModel
 {
-    public List<OfferDto> Offers { get; set; }
+    public List<OfferDto> Offers { get; set; } = new List<OfferDto>();
     public int TotalPages { get; set; }
     public int CurrentPage { get; set; }
 }

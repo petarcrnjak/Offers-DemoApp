@@ -1,10 +1,10 @@
-using System.Net;
-using System.Text;
 using Application.DTOs;
 using Application.Interfaces;
 using Application.Models;
 using Application.Models.Validation;
 using Newtonsoft.Json;
+using System.Net;
+using System.Text;
 
 namespace Application.Services;
 
@@ -25,7 +25,7 @@ public class OfferItemApiClient : IOfferItemApiClient
         if (response.IsSuccessStatusCode)
         {
             var responseBody = await response.Content.ReadAsStringAsync();
-            var result = JsonConvert.DeserializeObject<PaginatedOffersDto>(responseBody);
+            var result = SafeDeserialize<PaginatedOffersDto>(responseBody);
             return result;
         }
 
@@ -42,13 +42,13 @@ public class OfferItemApiClient : IOfferItemApiClient
             if (response.IsSuccessStatusCode)
             {
                 var responseBody = await response.Content.ReadAsStringAsync();
-                var result = JsonConvert.DeserializeObject<OfferDto>(responseBody);
+                var result = SafeDeserialize<OfferDto>(responseBody);
                 return result;
             }
 
             return null;
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
             return null;
         }
@@ -63,19 +63,20 @@ public class OfferItemApiClient : IOfferItemApiClient
             var content = new StringContent(requestData, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PutAsync(requestUri, content);
+            var responseBody = await response.Content.ReadAsStringAsync();
+
             if (response.IsSuccessStatusCode)
             {
-                var responseBody = await response.Content.ReadAsStringAsync();
-                return new ApiResponse<OfferDto>(response.IsSuccessStatusCode, null, JsonConvert.DeserializeObject<OfferDto>(responseBody));
+                var dto = SafeDeserialize<OfferDto>(responseBody);
+                return new ApiResponse<OfferDto>(response.IsSuccessStatusCode, null, dto);
             }
 
             if (response.StatusCode == HttpStatusCode.BadRequest)
             {
-                var responseBody = await response.Content.ReadAsStringAsync();
-                var validationErrorResponse = JsonConvert.DeserializeObject<ApiResponseWrapper<List<ValidationError>>>(responseBody);
-                if (validationErrorResponse != null && !validationErrorResponse.Success && validationErrorResponse.Data?.Count != 0)
+                var errorResponse = SafeDeserialize<ApiResponseWrapper<List<ValidationError>>>(responseBody);
+                if (errorResponse != null && !errorResponse.Success && errorResponse.Data?.Count > 0)
                 {
-                    var errorMessage = validationErrorResponse.Data.FirstOrDefault().ErrorMessage;
+                    var errorMessage = string.Join(Environment.NewLine, errorResponse.Data.Select(e => e.ErrorMessage));
                     return new ApiResponse<OfferDto>(response.IsSuccessStatusCode, errorMessage);
                 }
 
@@ -113,15 +114,15 @@ public class OfferItemApiClient : IOfferItemApiClient
             if (response.IsSuccessStatusCode)
             {
                 var responseBody = await response.Content.ReadAsStringAsync();
-                var offer = JsonConvert.DeserializeObject<OfferDto>(responseBody);
+                var offer = SafeDeserialize<OfferDto>(responseBody);
                 return offer;
             }
 
             return null;
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            Console.WriteLine(e);
+            Console.WriteLine(ex);
             return null;
         }
     }
@@ -134,15 +135,15 @@ public class OfferItemApiClient : IOfferItemApiClient
             if (response.IsSuccessStatusCode)
             {
                 var responseBody = await response.Content.ReadAsStringAsync();
-                var offerItemsList = JsonConvert.DeserializeObject<List<OfferItemDto>>(responseBody);
+                var offerItemsList = SafeDeserialize<List<OfferItemDto>>(responseBody);
                 return offerItemsList;
             }
 
             return null;
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            Console.WriteLine(e);
+            Console.WriteLine(ex);
             return null;
         }
     }
@@ -160,7 +161,7 @@ public class OfferItemApiClient : IOfferItemApiClient
             if (response.IsSuccessStatusCode)
             {
                 var responseBody = await response.Content.ReadAsStringAsync();
-                return JsonConvert.DeserializeObject<ImportResultDto>(responseBody);
+                return SafeDeserialize<ImportResultDto>(responseBody);
             }
 
             return null;
@@ -170,5 +171,12 @@ public class OfferItemApiClient : IOfferItemApiClient
             Console.WriteLine(ex);
             return null;
         }
+    }
+
+    private static T? SafeDeserialize<T>(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return default;
+        try { return JsonConvert.DeserializeObject<T>(json); } catch { return default; }
     }
 }
