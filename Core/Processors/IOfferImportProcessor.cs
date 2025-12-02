@@ -5,5 +5,5 @@ namespace Core.Processors;
 
 public interface IOfferImportProcessor
 {
-    Task<OperationResult> ProcessOfferAsync(OfferProcessingRequest request);
+    Task<OperationResult> ProcessOfferAsync(OfferProcessingRequest request, CancellationToken cancellationToken = default);
 }

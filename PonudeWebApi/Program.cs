@@ -32,11 +32,10 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>((serviceProvider, opt
 
 builder.Services.AddScoped<IOfferRepository, OfferRepository>();
 builder.Services.AddScoped<IOfferService, OfferService>();
-builder.Services.AddScoped<IValidator<OfferItemDto>, OfferItemValidator>();
+builder.Services.AddTransient<IValidator<OfferItemDto>, OfferItemValidator>();
 builder.Services.AddTransient<IValidator<OfferDto>, OfferDtoValidator>();
 builder.Services.AddScoped<IOfferImportService, OfferImportService>();
 builder.Services.AddScoped<IOfferImportProcessor, OfferImportProcessor>();
-
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();

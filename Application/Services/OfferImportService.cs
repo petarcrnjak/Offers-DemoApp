@@ -39,7 +39,7 @@ public class OfferImportService : IOfferImportService
                     }
 
                     var request = OfferMapper.ToProcessingRequest(offer);
-                    var operationResult  = await _processor.ProcessOfferAsync(request);
+                    var operationResult = await _processor.ProcessOfferAsync(request, cancellationToken);
 
                     if (operationResult.Success)
                         result.SuccessCount++;
