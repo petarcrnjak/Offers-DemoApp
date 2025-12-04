@@ -81,7 +81,7 @@ public class OffersController : ControllerBase
     [HttpDelete("{offerId}/items/{itemId}")]
     public async Task<IActionResult> DeleteOfferItem(int offerId, int itemId)
     {
-        var result = await _offerService.DeleteOfferItem(offerId, itemId);
+        var result = await _offerService.DeleteOfferItemAsync(offerId, itemId);
         if (result)
             return Ok(new { success = true });
 
@@ -91,7 +91,7 @@ public class OffersController : ControllerBase
     [HttpGet("offerItems")]
     public async Task<ActionResult> GetArticlesForSelect()
     {
-        var offerItemNames = await _offerService.GetOfferItemsNames();
+        var offerItemNames = await _offerService.GetOfferItemsNamesAsync();
         return Ok(offerItemNames.ToList());
     }
 

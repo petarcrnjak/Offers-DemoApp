@@ -6,6 +6,7 @@ using Core.Interfaces;
 using Core.Processors;
 using FluentValidation;
 using Infrastructure.Data;
+using Infrastructure.Exceptions;
 using Infrastructure.Interfaces;
 using Infrastructure.Processing;
 using Microsoft.EntityFrameworkCore;
@@ -31,11 +32,16 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>((serviceProvider, opt
 });
 
 builder.Services.AddScoped<IOfferRepository, OfferRepository>();
+builder.Services.AddScoped<IOfferItemRepository, OfferItemRepository>();
+builder.Services.AddScoped<IBulkOfferRepository, BulkOfferRepository>();
+
 builder.Services.AddScoped<IOfferService, OfferService>();
 builder.Services.AddTransient<IValidator<OfferItemDto>, OfferItemValidator>();
 builder.Services.AddTransient<IValidator<OfferDto>, OfferDtoValidator>();
 builder.Services.AddScoped<IOfferImportService, OfferImportService>();
 builder.Services.AddScoped<IOfferImportProcessor, OfferImportProcessor>();
+
+builder.Services.AddSingleton<IDbExceptionParser, DbExceptionParser>();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();

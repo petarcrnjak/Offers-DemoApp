@@ -9,8 +9,8 @@ public interface IOfferService
     Task<List<OfferDto>> GetOffersAsync(int pageIndex, int pageSize);
     Task<OfferDto?> GetOfferByIdAsync(int id);
     Task<OfferDto?> UpdateOffer(int id, OfferDto updatedOffer);
-    Task<bool> DeleteOfferItem(int offerId, int itemId);
+    Task<bool> DeleteOfferItemAsync(int offerId, int itemId);
     Task<int> GetTotalOffersCountAsync();
-    Task<IEnumerable<OfferItem>> GetOfferItemsNames();
+    Task<IEnumerable<OfferItem>> GetOfferItemsNamesAsync();
     Task<OfferDto?> CreateNewOfferAsync();
 }

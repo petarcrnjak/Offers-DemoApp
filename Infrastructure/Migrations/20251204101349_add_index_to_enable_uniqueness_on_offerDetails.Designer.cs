@@ -4,6 +4,7 @@ using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251204101349_add_index_to_enable_uniqueness_on_offerDetails")]
+    partial class add_index_to_enable_uniqueness_on_offerDetails
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -54,10 +57,9 @@ namespace Infrastructure.Migrations
                     b.HasIndex("OfferItemId");
 
                     b.HasIndex("OfferId", "OfferItemId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_OfferDetails_OfferId_OfferItemId");
+                        .IsUnique();
 
-                    b.ToTable("OfferDetails");
+                    b.ToTable("OfferDetails", (string)null);
                 });
 
             modelBuilder.Entity("Core.Entities.OfferItem", b =>
@@ -70,8 +72,7 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("Article")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("UnitPrice")
                         .HasColumnType("decimal(18,2)");
@@ -92,7 +93,7 @@ namespace Infrastructure.Migrations
                     b.HasOne("Core.Entities.OfferItem", "OfferItem")
                         .WithMany("OfferDetails")
                         .HasForeignKey("OfferItemId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Offer");

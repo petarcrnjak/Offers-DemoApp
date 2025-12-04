@@ -8,10 +8,12 @@ namespace Infrastructure.Interfaces;
 public class OfferRepository : IOfferRepository
 {
     private readonly ApplicationDbContext _context;
+    private readonly IOfferItemRepository _items;
 
-    public OfferRepository(ApplicationDbContext context)
+    public OfferRepository(ApplicationDbContext context, IOfferItemRepository items)
     {
         _context = context;
+        _items = items;
     }
 
     public async Task<IEnumerable<Offer>> GetAllOffersAsync()
@@ -43,14 +45,9 @@ public class OfferRepository : IOfferRepository
             .FirstOrDefaultAsync();
     }
 
-    public async Task<OfferItem?> GetOfferItemByIdAsync(int id)
-    {
-        return await _context.OfferItems
-            .AsNoTracking()
-            .FirstOrDefaultAsync(o => o.Id == id);
-    }
+    public Task<OfferItem?> GetOfferItemByIdAsync(int id) => _items.GetByIdAsync(id);
 
-    public async Task<Offer?> UpdateOffer(Offer updatedOffer, CancellationToken cancellationToken = default)
+    public async Task<Offer?> UpdateOfferAsync(Offer updatedOffer, CancellationToken cancellationToken = default)
     {
         var existing = await _context.Offers
            .Include(o => o.OfferDetails)
@@ -60,7 +57,7 @@ public class OfferRepository : IOfferRepository
         if (existing == null)
             return null;
 
-        var updatedDetails = updatedOffer.OfferDetails ?? new List<OfferDetails>();
+        var updatedDetails = updatedOffer.OfferDetails ?? [];
         var updatedItemIds = updatedDetails.Select(d => d.OfferItemId).ToHashSet();
 
         var toRemove = existing.OfferDetails
@@ -86,7 +83,7 @@ public class OfferRepository : IOfferRepository
             else
             {
                 // Ensure OfferItem is attached/tracked
-                var item = await _context.OfferItems.FindAsync(upd.OfferItemId);
+                var item = await _items.GetByIdAsync(upd.OfferItemId, cancellationToken);
                 if (item == null)
                 {
                     // Skip relations for missing OfferItem - caller/service should ensure items exist
@@ -139,45 +136,11 @@ public class OfferRepository : IOfferRepository
         return true;
     }
 
-    public async Task<int> GetTotalOffersCount()
+    public async Task<int> GetTotalOffersCountAsync()
     {
         return await _context.Offers
             .AsNoTracking()
             .CountAsync();
-    }
-
-    public async Task<IEnumerable<OfferItem>> GetOfferItemsNames()
-    {
-        return await _context.OfferItems
-            .AsNoTracking()
-            .OrderBy(x => x.Article)
-            .ToListAsync();
-    }
-
-    public async Task<Offer> CreateNewOfferImportAsync(Offer offer, CancellationToken cancellationToken = default)
-    {
-        await using var transaction = await _context.Database.BeginTransactionAsync();
-
-        try
-        {
-            // Enable IDENTITY_INSERT
-            await _context.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT dbo.Offers ON", cancellationToken);
-
-            // Add and save the offer
-            _context.Offers.Add(offer);
-            await _context.SaveChangesAsync(cancellationToken);
-
-            // Disable IDENTITY_INSERT
-            await _context.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT dbo.Offers OFF", cancellationToken);
-
-            await transaction.CommitAsync(cancellationToken);
-            return offer;
-        }
-        catch
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            throw;
-        }
     }
 
     public async Task<Offer> CreateNewOfferAsync(Offer offer)
@@ -195,27 +158,5 @@ public class OfferRepository : IOfferRepository
             .Where(o => o.Id == offerId)
             .SelectMany(o => o.OfferDetails)
             .AnyAsync(od => od.OfferItemId == articleId);
-    }
-
-    public async Task<OfferItem> CreateNewOfferItem(OfferItem offerItem, CancellationToken cancellationToken = default)
-    {
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-        try
-        {
-            await _context.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT dbo.OfferItems ON", cancellationToken);
-
-            _context.OfferItems.Add(offerItem);
-            await _context.SaveChangesAsync(cancellationToken);
-
-            await _context.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT dbo.OfferItems OFF", cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-
-            return offerItem;
-        }
-        catch
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            throw;
-        }
     }
 }

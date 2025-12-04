@@ -10,11 +10,13 @@ namespace Application.Services;
 public class OfferService : IOfferService
 {
     private readonly IOfferRepository _offerRepository;
+    private readonly IOfferItemRepository _offerItemRepository;
     private readonly IValidator<OfferDto> _validator;
 
-    public OfferService(IOfferRepository offerRepository, IValidator<OfferDto> validator)
+    public OfferService(IOfferRepository offerRepository, IOfferItemRepository offerItemRepository, IValidator<OfferDto> validator)
     {
         _offerRepository = offerRepository;
+        _offerItemRepository = offerItemRepository;
         _validator = validator;
     }
 
@@ -63,7 +65,7 @@ public class OfferService : IOfferService
             }).ToList()
         };
 
-        var updated = await _offerRepository.UpdateOffer(domainOffer);
+        var updated = await _offerRepository.UpdateOfferAsync(domainOffer);
         if (updated == null)
             return null;
 
@@ -71,19 +73,19 @@ public class OfferService : IOfferService
     }
 
 
-    public async Task<bool> DeleteOfferItem(int offerId, int itemId)
+    public async Task<bool> DeleteOfferItemAsync(int offerId, int itemId)
     {
         return await _offerRepository.DeleteOfferItemAsync(offerId, itemId);
     }
 
     public async Task<int> GetTotalOffersCountAsync()
     {
-        return await _offerRepository.GetTotalOffersCount();
+        return await _offerRepository.GetTotalOffersCountAsync();
     }
 
-    public async Task<IEnumerable<OfferItem>> GetOfferItemsNames()
+    public async Task<IEnumerable<OfferItem>> GetOfferItemsNamesAsync()
     {
-        return await _offerRepository.GetOfferItemsNames();
+        return await _offerItemRepository.GetOfferItemsNamesAsync();
     }
 
     public async Task<OfferDto?> CreateNewOfferAsync()
