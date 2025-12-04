@@ -127,7 +127,7 @@ public class OffersController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ImportExcel(ImportViewModel model)
+    public async Task<IActionResult> ImportData(ImportViewModel model)
     {
         if (!ModelState.IsValid)
             return View("Excel", model);
@@ -143,13 +143,8 @@ public class OffersController : Controller
             {
                 using var stream = model.ExcelFile.OpenReadStream();
                 var offers = _excelParser.Parse<OfferImportDto>(stream);
-                var offerList = offers.ToList();
+
                 var apiResult = await _offerItemClient.ImportOffersAsync(offers.ToList());
-                //var offers = _excelDataParser.Parse(stream);  
-                //var apiResult = await _offerItemClient.ImportOffersAsync(offers.ToList());
-                
-                //var offerImportDtos = _dataParser.Parse(stream).ToList();
-                //var apiResult = await _offerItemClient.ImportOffersAsync(offerImportDtos);
 
                 if (apiResult == null)
                     throw new Exception("API request failed");
@@ -161,19 +156,19 @@ public class OffersController : Controller
                 else
                     TempData["SuccessMessage"] = $"Successfully imported {apiResult.SuccessCount} offers";
 
-                return View("Excel", model);
+                return View("ImportData", model);
             }
             catch (Exception e)
             {
                 TempData["ErrorMessage"] = $"Import failed: {e.Message}";
-                return View("Excel", model);
+                return View("ImportData", model);
             }
 
-        return View("Excel", model);
+        return View("ImportData", model);
     }
 
     [HttpGet]
-    public IActionResult Excel()
+    public IActionResult ImportData()
     {
         return View();
     }

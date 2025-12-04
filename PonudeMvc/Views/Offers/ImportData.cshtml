@@ -22,7 +22,7 @@
     </div>
 }
 
-<form asp-controller="Offers" asp-action="ImportExcel" method="post" enctype="multipart/form-data">
+<form id="importForm" asp-controller="Offers" asp-action="ImportData" method="post" enctype="multipart/form-data" class="import-form">
     @Html.AntiForgeryToken()
 
     <div class="form-group">
@@ -31,8 +31,13 @@
         <span asp-validation-for="ExcelFile" class="text-danger"></span>
     </div>
 
-    <button type="submit" class="btn btn-primary mt-3">Uvezi podatke</button>
+    <button id="importSubmit" type="submit" class="btn btn-primary mt-3">Uvezi podatke</button>
 </form>
+
+<!-- Minimal text-only loading message -->
+<div id="loadingText" style="display:none; position:fixed; inset:0; z-index:1050; align-items:center; justify-content:center; background:rgba(0,0,0,0.35); color:#fff; font-size:1.125rem;">
+    Učitavanje, molimo sačekajte...
+</div>
 
 @if (ViewBag.Message != null)
 {
@@ -44,7 +49,7 @@
 @if (Model?.ImportResult != null)
 {
     <div class="mt-4">
-        <h4>Rezultat uvoza - @Model.ImportResult.ProcessedDate.ToString("dd.MM.yyyy")</h4>
+        <h4>Rezultat uvoza - @Model.ImportResult.ProcessedDate.ToString("dd.MM.yyyy hh:MM:ss")</h4>
 
         <div class="alert @(Model.ImportResult.Errors.Any() ? "alert-warning" : "alert-success")">
             @if (Model.ImportResult.SuccessCount > 0)
@@ -96,5 +101,35 @@
 }
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial"/>
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        // Minimal, easy JS: show loading text only when the form will actually submit
+        (function () {
+            const form = document.getElementById('importForm');
+            const loading = document.getElementById('loadingText');
+            const submit = document.getElementById('importSubmit');
+            if (!form) return;
+
+            form.addEventListener('submit', function (e) {
+                const file = form.querySelector('input[type="file"]');
+                if (!file || !file.files || file.files.length === 0) {
+                    // rely on existing validation message (server/client) — just focus file input and stop submit
+                    file && file.focus();
+                    e.preventDefault();
+                    return;
+                }
+
+                // let browser or unobtrusive validation run first; if invalid, don't show loading
+                if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+                    return; // browser will show validation messages
+                }
+
+                // show loading and prevent double submit
+                loading.style.display = 'flex';
+                if (submit) submit.disabled = true;
+                // allow normal POST to continue
+            });
+        })();
+    </script>
 }
